@@ -245,4 +245,4 @@ Physical Surface(2) = {1};
 Point{out_points[]} In Surface {1};
 
 Mesh 2;
-Save "rake.vtk";
+Save "rake.msh";
