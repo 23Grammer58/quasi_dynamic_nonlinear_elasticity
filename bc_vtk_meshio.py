@@ -58,7 +58,7 @@ def add_u_bc(ic, bc, point_type):
     return ic
 
 
-def next_quasi_static(mesh_filename="solution_HOG_01", du=0.1, dv=0.1):
+def next_quasi_static(mesh_filename="solution_HOG_01", du=0.1, dv=0.1, th = 0.4):
     """
         quasi_i:{P_i, v_e_i} -> {P_(i+1), v_(i+1)}, где P_(i+1) = v_e_i, v_(i+1) = P_(i+1) + dx,
         создает новый .vtk.
@@ -134,7 +134,7 @@ def next_quasi_static(mesh_filename="solution_HOG_01", du=0.1, dv=0.1):
     cells_num = np.shape(mesh_old.cells[-1].data)
     f_fiber = np.ones(cells_num) * [1, 0, 0]
     s_fiber = np.ones(cells_num) * [0, 1, 0]
-    thickness = np.ones(cells_num[0]) * 0.4
+    thickness = np.ones(cells_num[0]) * th
 
     cell_data_vtk = {
         "f:fiber_s": [s_fiber],
@@ -163,7 +163,7 @@ def next_quasi_static(mesh_filename="solution_HOG_01", du=0.1, dv=0.1):
     return path_to_next_file
 
 
-def read_msh_write_vtk(mesh_filename: str, output_mesh_filename: str, print_bnd_data: bool = False, du=0.1, dv=0.1) -> str:
+def read_msh_write_vtk(mesh_filename: str, output_mesh_filename: str, print_bnd_data: bool = False, du=0.1, dv=0.1, th=0.4) -> str:
     
 
     path_to_current_file = add_dir_to_path("./res", mesh_filename, ".msh")
@@ -259,7 +259,7 @@ def read_msh_write_vtk(mesh_filename: str, output_mesh_filename: str, print_bnd_
 
     f_fiber = np.ones(cells_num) * [1, 0, 0]
     s_fiber = np.ones(cells_num) * [0, 1, 0]
-    thickness = np.ones(cells_num[0]) * 0.4
+    thickness = np.ones(cells_num[0]) * th
 
     cell_data_vtk = {
         "f:fiber_s": [s_fiber],

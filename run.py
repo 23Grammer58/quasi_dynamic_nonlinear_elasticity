@@ -25,7 +25,8 @@ def iterative_solve(
         maxit, 
         start_vtk_file: str = None, 
         msh_file: str = "rake_8", 
-        experiment_name: str = "test"
+        experiment_name: str = "test",
+        th = 0.4
         ):
 
     if not start_vtk_file:
@@ -34,7 +35,8 @@ def iterative_solve(
             output_mesh_filename = experiment_name,
             print_bnd_data = False,
             du = du, 
-            dv = dv
+            dv = dv,
+            th=th
             )
         
         # print(vtk_initial_path)
@@ -46,7 +48,7 @@ def iterative_solve(
         run_model("rake_iterative.config", vtk_initial_path, first_result_file)
         # zaglushka("rake_iterative.config", vtk_initial_path, first_result_file)
 
-        start_vtk_file = next_quasi_static(experiment_name + "_00", du, dv)  
+        start_vtk_file = next_quasi_static(experiment_name + "_00", du, dv, th)  
         print("start", start_vtk_file)
     else:
         it = int(start_vtk_file[-10:-8])
@@ -61,7 +63,7 @@ def iterative_solve(
         print(end_vtk_file)
         run_model("rake_iterative.config", start_vtk_file, end_vtk_file)
         # zaglushka("rake_iterative.config", start_vtk_file, end_vtk_file)
-        start_vtk_file = next_quasi_static(experiment_name + "_" + str(it).zfill(2), du, dv)  
+        start_vtk_file = next_quasi_static(experiment_name + "_" + str(it).zfill(2), du, dv, th)  
     # next_vtk = next_quasi_static("test_00")
     # reformat_vtk(next_vtk, None)
 
@@ -74,8 +76,8 @@ if __name__ == "__main__":
     # config_file = sys.argv[2]
     # run_model(config_file)
 
-    du = 0.525  
+    du = 0.0525  
     n = 123
     # start_configuration = r"/home/proj/membranemodel/build/benchmarks/general/iterative/res/test_119_txt.vtk"
-    iterative_solve(du / n, du / n, n)
+    iterative_solve(du / n, du / n, n, experiment_name="t", th=0.05)
     
