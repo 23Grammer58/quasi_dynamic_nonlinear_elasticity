@@ -29,6 +29,7 @@ def iterative_solve(
         th = 0.4
         ):
 
+    
     if not start_vtk_file:
         vtk_initial_path = read_msh_write_vtk(
             mesh_filename = msh_file,
@@ -39,9 +40,11 @@ def iterative_solve(
             th=th
             )
         
+        global_it = 0
+        # maxit = du / n
         # print(vtk_initial_path)
 
-        it = 0
+        
         first_result_file = add_dir_to_path("", experiment_name, "_00")
         # print("first", first_result_file)
 
@@ -51,19 +54,22 @@ def iterative_solve(
         start_vtk_file = next_quasi_static(experiment_name + "_00", du, dv, th)  
         print("start", start_vtk_file)
     else:
-        it = int(start_vtk_file[-10:-8])
-        print(it)
+        global_it = int(start_vtk_file[-10:-8])
+        print(f"Continue iterative solving from {global_it} iteration")
+    
+    it = 0
+
     while it < maxit:
         it += 1
         # mesh_filename = start_vtk_file[:-2] + str(it).zfill(2)
         
-        end_vtk_file = add_dir_to_path("", experiment_name + "_", str(it).zfill(2))
+        end_vtk_file = add_dir_to_path("", experiment_name + "_", str(it).zfill(4))
 
         print(start_vtk_file)
         print(end_vtk_file)
         run_model("rake_iterative.config", start_vtk_file, end_vtk_file)
         # zaglushka("rake_iterative.config", start_vtk_file, end_vtk_file)
-        start_vtk_file = next_quasi_static(experiment_name + "_" + str(it).zfill(2), du, dv, th)  
+        start_vtk_file = next_quasi_static(experiment_name + "_" + str(it).zfill(4), du, dv, th)  
     # next_vtk = next_quasi_static("test_00")
     # reformat_vtk(next_vtk, None)
 
@@ -76,8 +82,20 @@ if __name__ == "__main__":
     # config_file = sys.argv[2]
     # run_model(config_file)
 
-    du = 0.0525  
-    n = 123
-    # start_configuration = r"/home/proj/membranemodel/build/benchmarks/general/iterative/res/test_119_txt.vtk"
-    iterative_solve(du / n, du / n, n, experiment_name="t", th=0.05)
+    # n = 20000 / 5 / 2
+    # 2780 + 18 + 0.5 
+    # start_configuration = r"/home/proj/membranemodel/build/benchmarks/general/iterative/res/DIC_goretex_complex_94_txt.vtk"
+    start_conf = r"/home/proj/membranemodel/build/benchmarks/general/iterative/res/DIC_goretex_complex1_0010_txt.vtk"
+
+    du = 0.525  
+    n = 200
+
+    iterative_solve(
+        du / n, 
+        du / n, 
+        n, 
+        experiment_name="DIC_goretex_complex1",
+        th=0.85, 
+        # start_vtk_file=start_conf
+        )
     

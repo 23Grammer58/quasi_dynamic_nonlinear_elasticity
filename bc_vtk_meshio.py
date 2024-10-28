@@ -64,7 +64,7 @@ def next_quasi_static(mesh_filename="solution_HOG_01", du=0.1, dv=0.1, th = 0.4)
         создает новый .vtk.
     """
 
-    it = int(mesh_filename[-2:])
+    it = float(mesh_filename[-4:])
     directory = r"res"
 
     # path_to_current_file = os.path.join(directory, mesh_filename + "_txt.vtk")
@@ -151,7 +151,7 @@ def next_quasi_static(mesh_filename="solution_HOG_01", du=0.1, dv=0.1, th = 0.4)
     )
 
     it += 1
-    mesh_filename = mesh_filename[:-2] + str(it).zfill(2)
+    mesh_filename = mesh_filename[:-4] + str(it).zfill(4)
     path_to_next_file = os.path.join(directory, mesh_filename + ".vtk")
     meshio.write(path_to_next_file, mesh_vtk, binary=False)
     print(f"Results writed to {path_to_next_file}")
