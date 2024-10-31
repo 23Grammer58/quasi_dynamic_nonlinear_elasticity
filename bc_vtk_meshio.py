@@ -2,6 +2,7 @@ import meshio
 import numpy as np
 import os
 import subprocess
+from pathlib import Path
 from bc_vtk import write_vtk, read_vtk
 
 
@@ -29,8 +30,8 @@ def check(number):
         print("z - координата неподвижна")
 
 
-def replace_vtktypeint(mesh_file, postfix=".vtk"):
-    file_path = add_dir_to_path("./res", mesh_file, postfix)
+def replace_vtktypeint(file_path, postfix=".vtk"):
+    # file_path = add_dir_to_path("./res", mesh_file, postfix)
     with open(file_path, "r") as file:
         lines = file.readlines()
 
@@ -58,21 +59,21 @@ def add_u_bc(ic, bc, point_type):
     return ic
 
 
-def next_quasi_static(mesh_filename="solution_HOG_01", du=0.1, dv=0.1, th = 0.4):
+def next_quasi_static(it, path2current_configuration="solution_HOG_01", du=0.1, dv=0.1, th = 0.4):
     """
         quasi_i:{P_i, v_e_i} -> {P_(i+1), v_(i+1)}, где P_(i+1) = v_e_i, v_(i+1) = P_(i+1) + dx,
         создает новый .vtk.
     """
 
-    it = float(mesh_filename[-4:])
-    directory = r"res"
+    # it = float(mesh_filename[-4:])
+    # directory = r"res"
 
     # path_to_current_file = os.path.join(directory, mesh_filename + "_txt.vtk")
-    path_to_current_file = add_dir_to_path(directory_name=directory, filename=mesh_filename, post_fix="_txt.vtk")
+    # path_to_current_file = add_dir_to_path(directory_name=directory, filename=mesh_filename, post_fix="_txt.vtk")
 
-    print(path_to_current_file)
+    # print(path_to_current_file)
 
-    mesh_old = meshio.read(path_to_current_file)
+    mesh_old = meshio.read(path2current_configuration)
 
     print("old mesh", mesh_old)
     mesh = mesh_old.copy()
@@ -151,24 +152,37 @@ def next_quasi_static(mesh_filename="solution_HOG_01", du=0.1, dv=0.1, th = 0.4)
     )
 
     it += 1
-    mesh_filename = mesh_filename[:-4] + str(it).zfill(4)
-    path_to_next_file = os.path.join(directory, mesh_filename + ".vtk")
-    meshio.write(path_to_next_file, mesh_vtk, binary=False)
-    print(f"Results writed to {path_to_next_file}")
+    # next_mesh_filename = os.path.basename(path2current_configuration)[:-8]
+    # path2next_file = os.path.join(os.path.dirname(path2current_configuration), next_mesh_filename + ".vtk")
+    # meshio.write(path2next_file, mesh_vtk, binary=False)
+    # print(f"Results writed to {path2next_file}")
+
+    # print("curren conf type",type(path2current_configuration))
+
+    current_filename = path2current_configuration.stem  # Без расширения
+    it = int(current_filename.split('_')[-2])
+    current_filename = current_filename.split('_')[0]
+    
+    next_mesh_filename = f"{current_filename}_{(it + 1):04d}.vtk"
+    path2next_file = path2current_configuration.parent / Path("meshes") / next_mesh_filename
+    
+    # Запись новой сетки в файл
+    meshio.write(path2next_file, mesh_vtk, binary=False)
+    print(f"Результаты записаны в {path2next_file}")
 
     # print(mesh)
-    replace_vtktypeint(mesh_filename)
-    reformat_vtk(path_to_next_file, path_to_next_file)
+    replace_vtktypeint(path2next_file)
+    reformat_vtk(path2next_file, path2next_file)
 
-    return path_to_next_file
+    return path2next_file
 
 
-def read_msh_write_vtk(mesh_filename: str, output_mesh_filename: str, print_bnd_data: bool = False, du=0.1, dv=0.1, th=0.4) -> str:
+def read_msh_write_vtk(mesh_filename: str, path2vtk: str, print_bnd_data: bool = False, du=0.1, dv=0.1, th=0.4) -> str:
     
 
-    path_to_current_file = add_dir_to_path("./res", mesh_filename, ".msh")
+    # path_to_current_file = add_dir_to_path("./msh", mesh_filename, ".msh")
     # print(os.listdir("./res"))
-    mesh = meshio.read(path_to_current_file)
+    mesh = meshio.read(add_dir_to_path("./msh", mesh_filename, ".msh"))
 
     # print(mesh.point_data)
     vertex_bnd_msh = mesh.cells_dict['vertex'][:, 0]
@@ -281,14 +295,13 @@ def read_msh_write_vtk(mesh_filename: str, output_mesh_filename: str, print_bnd_
 
     assert "vertex" not in mesh_vtk.cells_dict.keys()
 
-    path_to_reformatted_file = add_dir_to_path("../meshes/stretch", output_mesh_filename, ".vtk")
-    meshio.write(path_to_reformatted_file, mesh_vtk, binary=False)
-    replace_vtktypeint("rake_test")
-    reformat_vtk(path_to_reformatted_file, path_to_reformatted_file)
-    mesh_check = meshio.read(path_to_reformatted_file)
-    print(np.unique(np.linalg.norm(mesh_check.cell_data["f:fiber_f"])))
+    # path_to_reformatted_file = add_dir_to_path(path_to_save_mesh, output_mesh_filename, ".vtk")
+    meshio.write(path2vtk, mesh_vtk, binary=False)
+    reformat_vtk(path2vtk, path2vtk)
+    # mesh_check = meshio.read(path_to_reformatted_file)
+    # print(np.unique(np.linalg.norm(mesh_check.cell_data["f:fiber_f"])))
 
-    return path_to_reformatted_file
+    return path2vtk
 
 
 def inspect_vtk(file_path):
@@ -320,6 +333,7 @@ def reformat_vtk(path: str, filename_output: str | None):
 
     if not filename_output:
         filename_output = path[:-4] + "_proc.vtk"
+    replace_vtktypeint(path)
 
     write_vtk(read_vtk(path), filename_output)
     # return filename_output

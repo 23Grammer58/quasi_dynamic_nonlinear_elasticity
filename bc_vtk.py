@@ -1,4 +1,5 @@
 import vtk
+import io
 
 p = 1
 
@@ -184,7 +185,7 @@ def write_vtk(grid: vtk.vtkUnstructuredGrid, output_path: str):
     """
     num_points = grid.GetNumberOfPoints()
     num_cells = grid.GetNumberOfCells()
-
+    # file = io.StringIO()
     with open(output_path, 'w') as file:
         file.write('# vtk DataFile Version 3.0\n')
         file.write('File written by membrane-model\n')
@@ -278,12 +279,19 @@ def write_vtk(grid: vtk.vtkUnstructuredGrid, output_path: str):
             file.write('LOOKUP_TABLE default\n')
             for i in range(num_cells):
                 file.write(f'0.0 1.0 0.0\n')
+        
+    # if output_path:
+    #     with open(output_path, 'w') as file:
+    #         file.write(file.getvalue())
+
+    
+    # return file.getvalue()
 
 
 
 if __name__ == "__main__":
-    input_vtk_file = r'..\meshes\rake.vtk'
-    output_vtk_file = r'..\meshes\rake_proc.vtk'
+    input_vtk_file = r'rake.vtk'
+    output_vtk_file = r'rake_proc.vtk'
 
     dx = 7.0
     dy = 7.0

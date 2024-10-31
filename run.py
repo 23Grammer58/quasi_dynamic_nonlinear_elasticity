@@ -1,19 +1,30 @@
-import subprocess
-import sys
-from bc_vtk_meshio import read_msh_write_vtk, next_quasi_static, add_dir_to_path
-import shutil
 import os
+import sys
+import subprocess
+import shutil
+from pathlib import Path
+from bc_vtk_meshio import read_msh_write_vtk, next_quasi_static, add_dir_to_path
+
 
 def add_dir_to_path(directory_name, filename, post_fix):
     return os.path.join(directory_name, filename + post_fix)
 
-def run_model(config_file, mesh_file, result_file):
-    command = f"../model --mesh {mesh_file} --name {result_file} --config {config_file}"
+def run_model(config_file, mesh_file, result_filename, output_dir="./res"):
+    """
+    Запускает внешнюю модель с заданными конфигурационными и сеточными файлами.
+    """
+    command = [
+        "../model",
+        "--target", output_dir,
+        "--mesh", mesh_file,
+        "--name", result_filename,
+        "--config", config_file
+    ]
     try:
-        result = subprocess.run(command, shell=True, check=True, text=True, capture_output=False)
-        print("Output:", result.stdout)
-    except subprocess.CalledProcessError as e:
+        result = subprocess.run(command, check=True, text=True, capture_output=True)
+        # Для отладки можно раскомментировать следующую строку
         # print("Output:", result.stdout)
+    except subprocess.CalledProcessError as e:
         print("Error:", e.stderr)
         sys.exit(1)
 
@@ -24,24 +35,36 @@ def zaglushka(config_file, mesh_file, result_file):
 
 
 def iterative_solve(
-        du, 
-        dv, 
-        maxit, 
-        start_vtk_file: str = None, 
-        msh_file: str = "rake_8", 
-        experiment_name: str = "test",
-        th = 0.4
-        ):
+    du: float,
+    dv: float,
+    maxit: int,
+    start_vtk_file: str = None,
+    msh_file: str = "rake_8",
+    experiment_name: str = "test",
+    th: float = 0.4
+):
+    """
+    Выполняет итеративное решение с заданными параметрами.
+    """
 
-    path_to_results = os.path.join("res", experiment_name)
-    if not os.path.exists(path_to_results):
-        os.makedirs(path_to_results)
+    # path2results = os.path.join("res", experiment_name)
+    # if not os.path.exists(path2results):
+    #     os.makedirs(path2results)
 
+    path_to_results = Path("res") / experiment_name
+    path_to_meshes = path_to_results / "meshes"
+
+    path_to_results.mkdir(parents=True, exist_ok=True)
+    path_to_meshes.mkdir(parents=True, exist_ok=True)
 
     if not start_vtk_file:
-        vtk_initial_path = read_msh_write_vtk(
+        # path2vtk_0 = add_dir_to_path(path2results, experiment_name, ".vtk")
+        mesh_path = path_to_meshes / f"{experiment_name}.vtk"
+
+        # считывает сетку .msh добавляет граничные условия и записывает .vtk со всеми необходимыми полями для membrane_solver
+        read_msh_write_vtk(
             mesh_filename = msh_file,
-            output_mesh_filename = experiment_name,
+            path2vtk = mesh_path,
             print_bnd_data = False,
             du = du, 
             dv = dv,
@@ -49,35 +72,75 @@ def iterative_solve(
             )
         
         global_it = 0
+        print(f"Initial VTK path with boundary conditions: {mesh_path}")
         # maxit = du / n
         # print(vtk_initial_path)
 
+        # path2computed_configuration = add_dir_to_path(path2results, experiment_name, "_0000")
+        computed_configuration_path = path_to_results / f"{experiment_name}_0000"
         
-        first_result_file = add_dir_to_path("", experiment_name, "_0000")
-        # print("first", first_result_file)
+        # print("first", first_result_filename)
 
-        run_model("rake_iterative.config", vtk_initial_path, first_result_file)
-        # zaglushka("rake_iterative.config", vtk_initial_path, first_result_file)
+        run_model(
+            config_file=Path("rake_iterative.config"),
+            mesh_file=mesh_path, 
+            result_filename=computed_configuration_path.name, 
+            output_dir=path_to_results
+            )
+        # zaglushka("rake_iterative.config", vtk_initial_path, first_result_filename)
 
-        start_vtk_file = next_quasi_static(experiment_name + "_0000", du, dv, th)  
+        it = 0
+        # path_to_current_file = add_dir_to_path(directory_name=directory, filename=mesh_filename, post_fix="_txt.vtk")
+        
+        mesh_path = next_quasi_static(it, Path(f"{computed_configuration_path}_txt.vtk"), du, dv, th)  
+
+        # start_vtk_file = next_quasi_static(experiment_name + "_0000", du, dv, th)  
         print("start", start_vtk_file)
     else:
-        global_it = int(start_vtk_file[-12:-8])
-        print(f"Continue iterative solving from {global_it} iteration")
+        basename = mesh_path.name
+
+        try:
+            global_it = int(basename.split('_')[-2])
+            print("global iteration from filename", global_it)
+        except (IndexError, ValueError) as e:
+            print(f"Не удалось извлечь номер итерации из файла {mesh_path}: {e}")
+            sys.exit(1)
+        print(f"Продолжаем итеративное решение с итерации {global_it}")
+
+        # global_it = int(start_vtk_file[-12:-8])
+        # print(f"Continue iterative solving from {global_it} iteration")
     
     it = 0
 
     while it < (maxit):
         it += 1
+
+        computed_configuration_path = path_to_results / f"{experiment_name}_{it:04d}"
+
+        run_model(
+            config_file=Path("rake_iterative.config"),
+            mesh_file=mesh_path, 
+            result_filename=computed_configuration_path.name, 
+            output_dir=path_to_results
+            )
+        
+        mesh_path = next_quasi_static(it, Path(f"{computed_configuration_path}_txt.vtk"), du, dv, th)  
+
         # mesh_filename = start_vtk_file[:-2] + str(it).zfill(2)
         
-        end_vtk_file = add_dir_to_path("", experiment_name + "_", str(global_it + it).zfill(4))
+        # end_vtk_file = add_dir_to_path("", experiment_name + "_", str(global_it + it).zfill(4))
+        # print("prev conf:", path2computed_configuration)
 
-        print(start_vtk_file)
-        print(end_vtk_file)
-        run_model("rake_iterative.config", start_vtk_file, end_vtk_file)
+        # current_configuration = experiment_name + "_" + str(global_it + it).zfill(4)
+        # path2computed_configuration = add_dir_to_path(path2results, experiment_name, "_" + str(it).zfill(4))
+
+        # print("mesh file with bc: ",start_vtk_file)
+        # print("current conf:", path2computed_configuration)
+
+        # run_model("rake_iterative.config", start_vtk_file, current_configuration, path2results)
         # zaglushka("rake_iterative.config", start_vtk_file, end_vtk_file)
-        start_vtk_file = next_quasi_static(experiment_name + "_" + str(global_it + it).zfill(4), du, dv, th)  
+        # start_vtk_file = next_quasi_static(experiment_name + "_" + str(global_it + it).zfill(4), du, dv, th)  
+        # start_vtk_file = next_quasi_static(it, path2computed_configuration, du, dv, th)  
     # next_vtk = next_quasi_static("test_00")
     # reformat_vtk(next_vtk, None)
 
@@ -110,7 +173,7 @@ if __name__ == "__main__":
         du / n, 
         du / n, 
         n, 
-        experiment_name="Gore_2_DIC_all",
+        experiment_name="test",
         th=0.85, 
         # s tart_vtk_file=start_conf
         )
