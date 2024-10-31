@@ -41,9 +41,12 @@ def run_model(
             command.extend([f"--{key}", str(value)])
 
     try:
-        result = subprocess.run(command, check=True, text=True, capture_output=True)
         if verbose:
-            print("Output:", result.stdout)
+            result = subprocess.run(command, check=True, text=True, capture_output=True)
+        else:
+            result = subprocess.run(command, check=True, text=True, capture_output=False)
+
+
     except subprocess.CalledProcessError as e:
         print("Error:", e.stderr)
         sys.exit(1)
