@@ -85,6 +85,9 @@ def iterative_solve(
         th (float, optional): Толщина. По умолчанию 0.4.
     """
 
+    if not Path("../model").exists():
+        raise FileNotFoundError("Файл 'model' не найден в текущей директории.")
+    
     if energy_file.suffix != ".energy":
         raise ValueError("Неверное расширение файла. Ожидалось '.energy', получено '{}'.".format(energy_file.suffix))
 
@@ -97,7 +100,6 @@ def iterative_solve(
      # Создание необходимых директорий
     path_to_results.mkdir(parents=True, exist_ok=True)
     path_to_meshes.mkdir(parents=True, exist_ok=True)
-    # mesh_path = path_to_meshes / f"{experiment_name}.vtk"
 
     if not start_vtk_file:
         # Создание начального .vtk файла с граничными условиями
@@ -128,6 +130,7 @@ def iterative_solve(
 
         it = 0
         # Генерация следующего файла сетки с наложенными граничными условиями .vtk файла
+        # необходимо добавить _txt.vtk, т.к. в файле с результатами расчетов будет обязательно такой суффикс
         mesh_path = next_quasi_static(it, Path(f"{computed_configuration_path}_txt.vtk"), du, dv, th)  
 
     else:
