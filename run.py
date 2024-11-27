@@ -10,6 +10,7 @@ def run_model(
         mesh_file: Path, 
         result_filename: str, 
         output_dir: Path = Path("./res"),
+        energy_file: Path = Path("../potentials/MooneyRivlin.energy"),
         **kwargs
 ):
     """
@@ -32,7 +33,8 @@ def run_model(
         "--target", str(output_dir),
         "--mesh", str(mesh_file),
         "--name", result_filename,
-        "--config", str(config_file)
+        "--config", str(config_file),
+        "--energy", str(energy_file)
     ]
 
     # Добавление остальных параметров
@@ -61,10 +63,13 @@ def iterative_solve(
     du: float,
     dv: float,
     maxit: int,
+    energy_file: Path | str,
     start_vtk_file: Path | None = None,
     msh_file: str = "rake_8",
-    experiment_name: str = "test",
-    th: float = 0.4
+    experiment_name: str | None = "test",
+    th: float = 0.4,
+    # **kwargs
+
 ):
     """
     Выполняет итеративное решение с заданными параметрами.
@@ -73,11 +78,18 @@ def iterative_solve(
         du (float): Смещение за одну итерацию по оси X.
         dv (float): Смещение за одну итерацию по оси Y.
         maxit (int): Максимальное количество итераций.
+        start_vtk_file (Path, optional): Путь к функции свободной энергии деформации ("потенциал") в формате .energy. 
         start_vtk_file (Path, optional): Путь к стартовому .vtk файлу. По умолчанию None.
         msh_file (str, optional): Имя файла сетки с геометрией. По умолчанию "rake_8".
         experiment_name (str, optional): Имя эксперимента. По умолчанию "test".
         th (float, optional): Толщина. По умолчанию 0.4.
     """
+
+    if energy_file.suffix != ".energy":
+        raise ValueError("Неверное расширение файла. Ожидалось '.energy', получено '{}'.".format(energy_file.suffix))
+
+    if not experiment_name:
+        experiment_name = msh_file + "_" + str(energy_file.stem)
 
     path_to_results = Path("res") / experiment_name
     path_to_meshes = path_to_results / "meshes"
@@ -85,6 +97,7 @@ def iterative_solve(
      # Создание необходимых директорий
     path_to_results.mkdir(parents=True, exist_ok=True)
     path_to_meshes.mkdir(parents=True, exist_ok=True)
+    # mesh_path = path_to_meshes / f"{experiment_name}.vtk"
 
     if not start_vtk_file:
         # Создание начального .vtk файла с граничными условиями
@@ -109,7 +122,8 @@ def iterative_solve(
             config_file=Path("rake_iterative.config"),
             mesh_file=mesh_path, 
             result_filename=computed_configuration_path.name, 
-            output_dir=path_to_results
+            output_dir=path_to_results, 
+            energy_file=energy_file
             )
 
         it = 0
@@ -117,11 +131,17 @@ def iterative_solve(
         mesh_path = next_quasi_static(it, Path(f"{computed_configuration_path}_txt.vtk"), du, dv, th)  
 
     else:
-        basename = mesh_path.name
+        start_vtk_file = Path(start_vtk_file)
+        basename = start_vtk_file.name
+        print(start_vtk_file)
+        # mesh_path = start_vtk_file.parent / "meshes" /  (start_vtk_file.stem[:-4] + ".vtk")
+        mesh_path = next_quasi_static(0, start_vtk_file, du, dv, th)  
+        # mesh_path.suffix = ".vtk"
+        print(f"mesh in {mesh_path}")
 
         try:
             global_it = int(basename.split('_')[-2])
-            print("global iteration from filename", global_it)
+            # print("Стартуем итеративное решение с итерации", global_it)
         except (IndexError, ValueError) as e:
             print(f"Не удалось извлечь номер итерации из файла {mesh_path}: {e}")
             sys.exit(1)
@@ -141,7 +161,8 @@ def iterative_solve(
             config_file=Path("rake_iterative.config"),
             mesh_file=mesh_path, 
             result_filename=computed_configuration_path.name, 
-            output_dir=path_to_results
+            output_dir=path_to_results,
+            energy_file=energy_file
             )
         
         # Генерация следующего файла сетки с наложенными граничными условиями .vtk файла
@@ -152,18 +173,21 @@ def iterative_solve(
 if __name__ == "__main__":
   
     it = 190
-    it_0 = 38
-    start_conf = r"/home/proj/membranemodel/build/benchmarks/general/iterative/res/Gore_Offx_" + str(it_0).zfill(4) + "_txt.vtk"
-
-    du = 0.525 / 2 
-    n = 50
+    it_0 = 24
+    # start_conf = r"/home/proj/membranemodel/build/benchmarks/general/iterative/res/exponential_big_mesh/exponential_big_mesh_" + str(it_0).zfill(4) + "_txt.vtk"
+    # start_conf = r"/home/proj/membranemodel/build/benchmarks/general/iterative/res/test_20_20/test_20_20_0000_txt.vtk"
+    start_conf = r"/home/proj/membranemodel/build/benchmarks/general/iterative/res/cross/stretch_cross_0000_txt.vtk"
+    du = 3.0 
+    n = 10
 
     iterative_solve(
         du / n, 
         du / n, 
         n, 
-        experiment_name="test",
-        th=0.85, 
-        # s tart_vtk_file=start_conf
+        experiment_name="cross",
+        th=0.85,
+        msh_file="rake_8",
+        energy_file=Path("/home/proj/membranemodel/build/benchmarks/general/potentials/GOH1.energy"),
+        start_vtk_file=start_conf
         )
     

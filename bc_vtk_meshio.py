@@ -79,8 +79,10 @@ def next_quasi_static(it, path2current_configuration="solution_HOG_01", du=0.1, 
     mesh = mesh_old.copy()
     # mesh.points = mesh.point_data['v:x_e']
     v_bnd = mesh.point_data['v:bnd']
-    v_x = mesh.point_data['v:x_e'].copy()
-
+    try:
+        v_x = mesh.point_data['v:x_e'].copy()
+    except:
+        v_x = mesh.points.copy()
     # du = 0.1
     # dv = 0.1
     dx = np.array([du, 0, 0])
@@ -161,10 +163,10 @@ def next_quasi_static(it, path2current_configuration="solution_HOG_01", du=0.1, 
 
     current_filename = path2current_configuration.stem  # Без расширения
     it = int(current_filename.split('_')[-2])
-    current_filename = current_filename.split('_')[0]
-    
-    next_mesh_filename = f"{current_filename}_{(it + 1):04d}.vtk"
-    path2next_file = path2current_configuration.parent / Path("meshes") / next_mesh_filename
+    current_filename = '_'.join(current_filename.rsplit('_', 1)[:-1]) + '.vtk'    
+    print(f"current_filename: {current_filename}")
+    # next_mesh_filename = f"{current_filename}_{(it + 1):04d}.vtk"
+    path2next_file = path2current_configuration.parent / Path("meshes") / current_filename
     
     # Запись новой сетки в файл
     meshio.write(path2next_file, mesh_vtk, binary=False)
@@ -357,8 +359,11 @@ def main():
 
 if __name__ == "__main__":
 
-    du = 3.5 / 400
-    read_msh_write_vtk("rake_16", "rake_test", True, du, du)
+    # du = 3.5 / 400
+    # read_msh_write_vtk("rake_16", "rake_test", True, du, du)
+    # current_filename = "test_20_20_0000_txt"
+    # current_filename = '_'.join(current_filename.rsplit('_', 1)[:-1]) + '.vtk'  
+    # print(current_filename)
     # m = meshio.read(r"res/test_00_txt.vtk")
     # print(m)
     # inspect_vtk("res/rake_test.vtk")
@@ -371,7 +376,7 @@ if __name__ == "__main__":
     # rewrite()
 
     # check(132)
-    # check(14)
+    check(4)
     # check(13)
 
     # it = 1
